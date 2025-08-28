@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prefix-to-Prefix Translation Explorer</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg-secondary: #0f1729;
+    --card: #141b2d;
+    --card-hover: #1a2236;
+    --border: #2a3f5f;
+    --text: #e8eef4;
+    --text-muted: #8b9dc7;
+    --text-dim: #5a6e8f;
+    --accent: #4a9eff;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --code-bg: #0d1117;
+    --highlight: rgba(74, 158, 255, 0.1);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    background: linear-gradient(135deg, var(--bg) 0%, var(--bg-secondary) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* Header Section */
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent), #22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+  }
+
+  /* Upload Section */
+  .upload-section {
+    background: var(--card);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  .upload-section:hover {
+    border-color: var(--accent);
+    background: var(--card-hover);
+  }
+
+  .upload-section.dragging {
+    border-color: var(--success);
+    background: rgba(34, 197, 94, 0.1);
+  }
+
+  .file-input-wrapper {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    margin: 1rem 0;
+  }
+
+  .file-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+
+  .file-input-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent);
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .file-input-label:hover {
+    background: #3a8eef;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+  }
+
+  /* Navigation */
+  .navigation {
+    display: flex;
+    gap: 1rem;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .nav-button {
+    padding: 0.5rem 1rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+  }
+
+  .nav-button:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .nav-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .sample-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .sample-info {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* Legend */
+  .legend {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .legend-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
+
+  .legend-text {
+    flex: 1;
+  }
+
+  .legend-title {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+
+  .legend-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  /* Main Content */
+  .main-content {
+    display: none;
+  }
+
+  .main-content.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Cards */
+  .cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--success));
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .card-icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.7;
+  }
+
+  .text-content {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+
+  /* Steps Table */
+  .steps-section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .steps-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .steps-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .steps-stats {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .stat-value {
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* Table */
+  .steps-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .steps-table th {
+    text-align: left;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .steps-table td {
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid rgba(42, 63, 95, 0.5);
+    vertical-align: top;
+  }
+
+  .steps-table tr:hover {
+    background: var(--highlight);
+  }
+
+  .step-id {
+    font-weight: 600;
+    color: var(--text-dim);
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+
+  .prefix-text {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+    font-size: 0.9rem;
+    background: var(--code-bg);
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    line-height: 1.4;
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  .missing {
+    color: var(--text-dim);
+    font-style: italic;
+    opacity: 0.6;
+  }
+
+  .policy-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .policy-commit {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+
+  .policy-read {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container {
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+    }
+
+    .cards-row {
+      grid-template-columns: 1fr;
+    }
+
+    .legend {
+      grid-template-columns: 1fr;
+    }
+
+    .steps-table {
+      font-size: 0.85rem;
+    }
+
+    .steps-table th,
+    .steps-table td {
+      padding: 0.5rem;
+    }
+
+    .prefix-text {
+      font-size: 0.8rem;
+    }
+
+    .steps-stats {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+
+  /* Help text */
+  .help-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Prefix-to-Prefix Translation Explorer</h1>
+      <p class="subtitle">Visualize incremental neural translation with READ/COMMIT policies</p>
+    </header>
+
+    <!-- Upload Section -->
+    <div class="upload-section" id="dropZone">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem; opacity: 0.5;">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+      <h3 style="margin-bottom: 1rem;">Upload Translation Data</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">Drop a JSONL file here or click to browse</p>
+      <div class="file-input-wrapper">
+        <input type="file" class="file-input" id="fileInput" accept=".jsonl,.json">
+        <label for="fileInput" class="file-input-label">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Choose JSONL File
+        </label>
+      </div>
+      <p class="help-text">Format: Each line should be a JSON object with: original_text, gemma_translation, prefixes, tr_prefixes, gemma_prefixes</p>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-icon" style="background: var(--code-bg); border: 1px solid var(--border);">📝</div>
+        <div class="legend-text">
+          <div class="legend-title">Source Prefix</div>
+          <div class="legend-desc">Incremental chunks of the original text being translated</div>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon" style="background: rgba(74, 158, 255, 0.2); border: 1px solid var(--accent);">🔄</div>
+        <div class="legend-text">
+          <div class="legend-title">Model Prediction</div>
+          <div class="legend-desc">Translation output for each prefix from the model</div>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon" style="background: rgba(34, 197, 94, 0.2); border: 1px solid var(--success);">✓</div>
+        <div class="legend-text">
+          <div class="legend-title">COMMIT Policy</div>
+          <div class="legend-desc">Model's prediction matches the final translation prefix</div>
+        </div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon" style="background: rgba(245, 158, 11, 0.2); border: 1px solid var(--warning);">👁</div>
+        <div class="legend-text">
+          <div class="legend-title">READ Policy</div>
+          <div class="legend-desc">Model needs more context before committing to translation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation" id="navigation" style="display: none;">
+      <button class="nav-button" id="prevBtn">← Previous</button>
+      <div class="sample-selector">
+        <label for="sampleSelect" style="color: var(--text-muted);">Sample:</label>
+        <select id="sampleSelect" class="nav-button" style="padding: 0.5rem;">
+        </select>
+        <span class="sample-info" id="sampleInfo"></span>
+      </div>
+      <button class="nav-button" id="nextBtn">Next →</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+      <!-- Source and Translation Cards -->
+      <div class="cards-row">
+        <div class="card">
+          <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <h3 class="card-title">Source Text</h3>
+          </div>
+          <div class="text-content" id="sourceText">—</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+            <h3 class="card-title">GEMMA FULL TEXT Translation</h3>
+          </div>
+          <div class="text-content" id="translationText">—</div>
+        </div>
+      </div>
+
+      <!-- Steps Table -->
+      <div class="steps-section">
+        <div class="steps-header">
+          <h3 class="steps-title">Translation Steps</h3>
+          <div class="steps-stats">
+            <div class="stat">
+              <span>Total Steps:</span>
+              <span class="stat-value" id="totalSteps">0</span>
+            </div>
+            <div class="stat">
+              <span>Commits:</span>
+              <span class="stat-value" style="color: var(--success);" id="commitCount">0</span>
+            </div>
+            <div class="stat">
+              <span>Reads:</span>
+              <span class="stat-value" style="color: var(--warning);" id="readCount">0</span>
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="steps-table">
+            <thead>
+              <tr>
+                <th style="width: 80px;">Step</th>
+                <th>Source Prefix</th>
+                <th>PREFIX ONLY Translation</th>
+                <th>Target Prefix Accumulation</th>
+                <th style="width: 100px;">Policy</th>
+              </tr>
+            </thead>
+            <tbody id="stepsTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allData = [];
+    let currentIndex = 0;
+
+    // File handling
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const mainContent = document.getElementById('mainContent');
+    const navigation = document.getElementById('navigation');
+    const sampleSelect = document.getElementById('sampleSelect');
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragging');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragging');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragging');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const lines = e.target.result.trim().split('\n');
+          allData = lines.map((line, idx) => {
+            try {
+              return JSON.parse(line);
+            } catch (err) {
+              console.warn(`Failed to parse line ${idx + 1}:`, err);
+              return null;
+            }
+          }).filter(item => item !== null);
+
+          if (allData.length === 0) {
+            alert('No valid JSON data found in file');
+            return;
+          }
+
+          // Update UI
+          navigation.style.display = 'flex';
+          updateSampleSelector();
+          displaySample(0);
+        } catch (err) {
+          alert('Error reading file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function updateSampleSelector() {
+      sampleSelect.innerHTML = '';
+      allData.forEach((_, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        option.textContent = `Sample ${idx + 1}`;
+        sampleSelect.appendChild(option);
+      });
+      document.getElementById('sampleInfo').textContent = `(${allData.length} total)`;
+    }
+
+    function displaySample(index) {
+      if (index < 0 || index >= allData.length) return;
+      
+      currentIndex = index;
+      const data = allData[index];
+      
+      // Update selector
+      sampleSelect.value = index;
+      
+      // Update navigation buttons
+      document.getElementById('prevBtn').disabled = index === 0;
+      document.getElementById('nextBtn').disabled = index === allData.length - 1;
+      
+      // Show main content
+      mainContent.classList.add('active');
+      
+      // Display data
+      const safe = (x) => (x == null || x === "") ? "—" : String(x);
+      
+      // Update cards - handle both original_translation and gemma_translation
+      document.getElementById('sourceText').textContent = safe(data.original_text);
+      const finalTranslation = data.gemma_translation || data.original_translation;
+      document.getElementById('translationText').textContent = safe(finalTranslation);
+      
+      // Process prefixes
+      const pfx = data.prefixes || {};
+      const trp = data.tr_prefixes || {};
+      const gmp = data.gemma_prefixes || {};
+      
+      // Get all unique prefix keys from all three objects and extract their numeric parts
+      const allKeys = new Set([...Object.keys(pfx), ...Object.keys(trp), ...Object.keys(gmp)]);
+      const sortedKeys = Array.from(allKeys).sort((a, b) => {
+        const ai = parseInt(a.split("_")[1] || "0", 10);
+        const bi = parseInt(b.split("_")[1] || "0", 10);
+        return ai - bi;
+      });
+      
+      // Build table
+      const tbody = document.getElementById('stepsTableBody');
+      tbody.innerHTML = '';
+      
+      let commitCount = 0;
+      let readCount = 0;
+      let actualSteps = 0;
+      
+      sortedKeys.forEach((k) => {
+        const i = k.split("_")[1];
+        
+        // Check if this key exists in the main prefixes object
+        // If not, skip it as it might be an out-of-order key in tr_prefixes
+        if (!pfx.hasOwnProperty(k)) {
+          return; // Skip this iteration
+        }
+        
+        actualSteps++;
+        
+        const srcPref = safe(pfx[k]);
+        const trPref = safe(trp[k]); // This will show "—" if the key doesn't exist
+        const gemPref = safe(gmp[k]);
+        
+        // Determine policy
+        let action = "READ";
+        if (trPref !== "—" && finalTranslation && finalTranslation.startsWith(trPref)) {
+          action = "COMMIT";
+          commitCount++;
+        } else {
+          readCount++;
+        }
+        
+        // Add visual indicator if translation is missing but exists elsewhere
+        const hasMissingTranslation = !trp.hasOwnProperty(k) && Object.keys(trp).length > 0;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><span class="step-id">t${i}</span></td>
+          <td><div class="prefix-text">${srcPref}</div></td>
+          <td>
+            <div class="prefix-text ${trPref === '—' ? 'missing' : ''}">
+              ${trPref}
+              ${hasMissingTranslation ? '<span style="color: var(--text-dim); font-size: 0.8rem;"> (no prediction)</span>' : ''}
+            </div>
+          </td>
+          <td><div class="prefix-text ${gemPref === '—' ? 'missing' : ''}">${gemPref}</div></td>
+          <td>
+            <span class="policy-badge policy-${action.toLowerCase()}">
+              ${action}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      // Update stats
+      document.getElementById('totalSteps').textContent = actualSteps;
+      document.getElementById('commitCount').textContent = commitCount;
+      document.getElementById('readCount').textContent = readCount;
+    }
+
+    // Navigation handlers
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentIndex > 0) {
+        displaySample(currentIndex - 1);
+      }
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (currentIndex < allData.length - 1) {
+        displaySample(currentIndex + 1);
+      }
+    });
+
+    sampleSelect.addEventListener('change', (e) => {
+      displaySample(parseInt(e.target.value));
+    });
+  </script>
+</body>
+</html>
