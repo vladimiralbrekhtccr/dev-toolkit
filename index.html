@@ -697,32 +697,32 @@
         return ai - bi;
       });
       
+      // Filter to only keys that exist in the main prefixes object
+      const validKeys = sortedKeys.filter(k => pfx.hasOwnProperty(k));
+      
       // Build table
       const tbody = document.getElementById('stepsTableBody');
       tbody.innerHTML = '';
       
       let commitCount = 0;
       let readCount = 0;
-      let actualSteps = 0;
       
-      sortedKeys.forEach((k) => {
+      validKeys.forEach((k, idx) => {
         const i = k.split("_")[1];
-        
-        // Check if this key exists in the main prefixes object
-        // If not, skip it as it might be an out-of-order key in tr_prefixes
-        if (!pfx.hasOwnProperty(k)) {
-          return; // Skip this iteration
-        }
-        
-        actualSteps++;
+        const isLastStep = idx === validKeys.length - 1;
         
         const srcPref = safe(pfx[k]);
-        const trPref = safe(trp[k]); // This will show "—" if the key doesn't exist
+        const trPref = safe(trp[k]);
         const gemPref = safe(gmp[k]);
         
-        // Determine policy
+        // CRITICAL CHANGE: Force last step to always be COMMIT
         let action = "READ";
-        if (trPref !== "—" && finalTranslation && finalTranslation.startsWith(trPref)) {
+        if (isLastStep) {
+          // Last step is ALWAYS COMMIT
+          action = "COMMIT";
+          commitCount++;
+        } else if (trPref !== "—" && finalTranslation && finalTranslation.startsWith(trPref)) {
+          // For non-last steps, check if the prefix matches the beginning of the final translation
           action = "COMMIT";
           commitCount++;
         } else {
@@ -746,6 +746,7 @@
           <td>
             <span class="policy-badge policy-${action.toLowerCase()}">
               ${action}
+              ${isLastStep ? ' (FINAL)' : ''}
             </span>
           </td>
         `;
@@ -753,7 +754,7 @@
       });
       
       // Update stats
-      document.getElementById('totalSteps').textContent = actualSteps;
+      document.getElementById('totalSteps').textContent = validKeys.length;
       document.getElementById('commitCount').textContent = commitCount;
       document.getElementById('readCount').textContent = readCount;
     }
